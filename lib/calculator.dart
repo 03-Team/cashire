@@ -43,37 +43,49 @@ class _CalculatorPageState extends State<CalculatorPage> {
   int total = 0;
 
   Future<void> updateStock() async {
-    var barangCollection = FirebaseFirestore.instance.collection('barang');
-    
-    for (var item in widget.selectedItems) {
-      String kode = item['kode'];
-      int jumlahBeli = item['jumlah_beli'];
-      
-      try {
-        var barangDoc = await barangCollection.doc(kode).get();
-        
-        if (barangDoc.exists) {
-          int currentStock = barangDoc['stok'] ?? 0;
-          int newStock = currentStock - jumlahBeli;
+  var barangCollection = FirebaseFirestore.instance.collection('barang');
 
-          if (newStock >= 0) {
-            await barangCollection.doc(kode).update({
-              'stok': newStock,
-            });
-            print('Updated stock for $kode: $newStock remaining.');
-          } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Stok tidak cukup untuk ${item['nama']}')),
-            );
-          }
+  for (var item in widget.selectedItems) {
+    String kode = item['kode'];  // Kode barang
+    int jumlahBeli = item['jumlah_beli'];  // Jumlah yang dibeli
+
+    try {
+      // Query untuk mencari barang berdasarkan kode
+      var barangQuery = await barangCollection.where('kode', isEqualTo: kode).get();
+
+      // Jika barang ditemukan
+      if (barangQuery.docs.isNotEmpty) {
+        // Ambil dokumen pertama (karena kode seharusnya unik)
+        var barangDoc = barangQuery.docs.first;
+        
+        // Ambil stok barang yang ada
+        int currentStock = barangDoc['stok'] ?? 0;  // Default ke 0 jika stok tidak ada
+        int newStock = currentStock - jumlahBeli;  // Hitung stok baru
+
+        // Cek apakah stok cukup
+        if (newStock >= 0) {
+          // Update stok di Firestore
+          await barangCollection.doc(barangDoc.id).update({
+            'stok': newStock,
+          });
+          print('Updated stock for $kode: $newStock remaining.');
         } else {
-          print('Barang dengan kode $kode tidak ditemukan.');
+          // Jika stok tidak cukup, tampilkan pesan error
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Stok tidak cukup untuk ${item['nama']}')),
+          );
         }
-      } catch (e) {
-        print('Error updating stock for $kode: $e');
+      } else {
+        // Jika barang dengan kode tidak ditemukan
+        print('Barang dengan kode $kode tidak ditemukan.');
       }
+    } catch (e) {
+      // Jika terjadi error saat query atau update
+      print('Error updating stock for $kode: $e');
     }
   }
+}
+
 
 
   // Fungsi untuk menangani input tombol angka
@@ -251,123 +263,6 @@ class _CalculatorPageState extends State<CalculatorPage> {
         Icons.backspace, // Ikon backspace
         size: 24,
         color: Colors.white,
-      ),
-    );
-  }
-}
-
-class HutangPage2 extends StatelessWidget {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-
-  final List<Map<String, dynamic>> selectedItems;
-  final double totalAmount;
-
-  HutangPage2({super.key, required this.selectedItems, required this.totalAmount});
-
-  Future<void> createKasbon(
-      String nama,
-      int nominal,
-      DateTime tanggalJatuhTempo,
-      DateTime tanggalSekarang,
-      String keterangan) async {
-    await _firestore.collection('kasbon').add({
-      'nama': nama,
-      'nominal': nominal,
-      'tanggal_jatuh_tempo': tanggalJatuhTempo,
-      'tanggal_sekarang': tanggalSekarang,
-      'keterangan': keterangan,
-      'status': 'Belum Lunas',
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final TextEditingController nominalController = TextEditingController();
-    final TextEditingController namaController = TextEditingController();
-    final TextEditingController tanggalJatuhTempoController = TextEditingController();
-    final TextEditingController keteranganController = TextEditingController();
-
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Color.fromARGB(255, 199, 217, 231),
-        title: Text('Kasbon', style: TextStyle(fontWeight: FontWeight.bold)),
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back),
-          onPressed: () {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (c) => Kalkulator(totalAmount: totalAmount, selectedItems: selectedItems)),
-            );
-          },
-        ),
-        centerTitle: true,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(45.0),
-        child: Form(
-          child: Column(
-            children: [
-              TextFormField(
-                controller: nominalController,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(labelText: 'Nominal'),
-              ),
-              TextFormField(
-                controller: namaController,
-                decoration: InputDecoration(labelText: 'Nama Pelanggan'),
-              ),
-              TextFormField(
-                controller: tanggalJatuhTempoController,
-                readOnly: true,
-                decoration: InputDecoration(labelText: 'Tanggal Jatuh Tempo'),
-                onTap: () async {
-                  DateTime? pickedDate = await showDatePicker(
-                    context: context,
-                    initialDate: DateTime.now(),
-                    firstDate: DateTime(2000),
-                    lastDate: DateTime(2101),
-                  );
-                  if (pickedDate != null) {
-                    tanggalJatuhTempoController.text =
-                        DateFormat('yyyy-MM-dd').format(pickedDate);
-                  }
-                },
-              ),
-              TextFormField(
-                controller: keteranganController,
-                decoration: InputDecoration(labelText: 'Keterangan'),
-              ),
-              SizedBox(height: 10),
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 25),
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Color.fromARGB(255, 181, 220, 238),
-                  ),
-                  onPressed: () async {
-                    // Memeriksa nilai sebelum menyimpan
-                    if (nominalController.text.isNotEmpty &&
-                        namaController.text.isNotEmpty &&
-                        tanggalJatuhTempoController.text.isNotEmpty) {
-                      await createKasbon(
-                        namaController.text,
-                        int.parse(nominalController.text),
-                        DateTime.parse(tanggalJatuhTempoController.text),
-                        DateTime.now(),
-                        keteranganController.text,
-                      );
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (c) => KasbonApps()),
-                      );
-                    }
-                  },
-                  child: Text('Simpan'),
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

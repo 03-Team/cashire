@@ -17,7 +17,7 @@ class BarangKosong extends StatefulWidget {
 
 class _BarangKosongState extends State<BarangKosong> {
   final CollectionReference _itemsCollection =
-  FirebaseFirestore.instance.collection('barang');
+      FirebaseFirestore.instance.collection('barang');
   TextEditingController searchController = TextEditingController();
 
   @override
@@ -52,8 +52,7 @@ class _BarangKosongState extends State<BarangKosong> {
           ),
           Expanded(
             child: StreamBuilder(
-              stream:
-                  FirebaseFirestore.instance.collection('barang').snapshots(),
+              stream: FirebaseFirestore.instance.collection('barang').snapshots(),
               builder: (context, snapshot) {
                 if (!snapshot.hasData) {
                   return const Center(child: CircularProgressIndicator());
@@ -63,8 +62,7 @@ class _BarangKosongState extends State<BarangKosong> {
                 return ListView(
                   children: snapshot.data!.docs.map((doc) {
                     var barang = doc.data() as Map<String, dynamic>;
-                    final item = Item.fromDocument(
-                        doc); // Menggunakan model Item untuk setiap data
+                    final item = Item.fromDocument(doc);
                     return GestureDetector(
                       onTap: () => _showEditItemDialog(context, item),
                       child: Card(
@@ -129,136 +127,111 @@ class _BarangKosongState extends State<BarangKosong> {
     );
   }
 
-void _showEditItemDialog(BuildContext context, Item item) {
-  TextEditingController namaBarangController = TextEditingController(text: item.nama);
-  TextEditingController stokController = TextEditingController(text: item.stok.toString());
-  TextEditingController kodeController = TextEditingController(text: item.kode);
-  TextEditingController hargaJualController = TextEditingController(text: item.hargaJual.toString());
+  void _showEditItemDialog(BuildContext context, Item item) {
+    TextEditingController namaBarangController = TextEditingController(text: item.nama);
+    TextEditingController stokController = TextEditingController(text: item.stok.toString());
+    TextEditingController kodeController = TextEditingController(text: item.kode);
+    TextEditingController hargaJualController = TextEditingController(text: item.hargaJual.toString());
 
-  showDialog(
-    context: context,
-    builder: (context) {
-      return AlertDialog(
-        title: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text('Edit Barang'),
-            IconButton(
-              icon: Icon(Icons.delete, color: Colors.red),
-               onPressed: () async {
-                // Menampilkan dialog konfirmasi hapus
-                bool? confirmDelete = await showDialog<bool>(
-                  context: context,
-                  builder: (BuildContext context) {
-                    return AlertDialog(
-                      title: Text("Konfirmasi Hapus"),
-                      content:
-                          Text("Apakah Anda yakin ingin menghapus data ini?"),
-                      actions: <Widget>[
-                        TextButton(
-                          child: Text("Tidak"),
-                          onPressed: () {
-                            Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (c) =>
-                                        BarangKosong())); // Menutup dialog dan tidak menghapus
-                          },
-                        ),
-                        TextButton(
-                          child: Text("Hapus"),
-                          onPressed: () {
-                            Navigator.of(context).pop(
-                                true); // Menutup dialog dan mengonfirmasi hapus
-                          },
-                        ),
-                      ],
-                    );
-                  },
-                );
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('Edit Barang'),
+              IconButton(
+                icon: Icon(Icons.delete, color: Colors.red),
+                onPressed: () async {
+                  bool? confirmDelete = await showDialog<bool>(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return AlertDialog(
+                        title: Text("Konfirmasi Hapus"),
+                        content: Text("Apakah Anda yakin ingin menghapus data ini?"),
+                        actions: <Widget>[
+                          TextButton(
+                            child: Text("Tidak"),
+                            onPressed: () {
+                              Navigator.pop(context);
+                            },
+                          ),
+                          TextButton(
+                            child: Text("Hapus"),
+                            onPressed: () {
+                              Navigator.of(context).pop(true);
+                            },
+                          ),
+                        ],
+                      );
+                    },
+                  );
 
-                // Jika pengguna mengonfirmasi hapus
-                if (confirmDelete == true) {
-                  await FirebaseFirestore.instance
-                      .collection('barang')
-                      .doc(item.id)
-                      .delete();
-                }
+                  if (confirmDelete == true) {
+                    await _itemsCollection.doc(item.id).delete();
+                  }
+                },
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: namaBarangController,
+                decoration: const InputDecoration(labelText: 'Nama Barang'),
+              ),
+              TextField(
+                controller: stokController,
+                decoration: const InputDecoration(labelText: 'Stok'),
+                keyboardType: TextInputType.number,
+              ),
+              TextField(
+                controller: kodeController,
+                decoration: const InputDecoration(labelText: 'Kode'),
+              ),
+              TextField(
+                controller: hargaJualController,
+                decoration: const InputDecoration(labelText: 'Harga Jual'),
+                keyboardType: TextInputType.number,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
               },
+              child: const Text('BATAL'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                _updateItem(
+                  item.id,
+                  namaBarangController.text,
+                  int.parse(stokController.text),
+                  kodeController.text,
+                  int.parse(hargaJualController.text),
+                  item.hargaDasar, // Include hargaDasar when updating
+                );
+                Navigator.pop(context);
+              },
+              child: const Text('SIMPAN'),
             ),
           ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: namaBarangController,
-              decoration: const InputDecoration(
-                labelText: 'Nama Barang',
-              ),
-            ),
-            TextField(
-              controller: stokController,
-              decoration: const InputDecoration(
-                labelText: 'Stok',
-              ),
-              keyboardType: TextInputType.number,
-            ),
-            TextField(
-              controller: kodeController,
-              decoration: const InputDecoration(
-                labelText: 'Kode',
-              ),
-            ),
-            TextField(
-              controller: hargaJualController,
-              decoration: const InputDecoration(
-                labelText: 'Harga Jual',
-              ),
-              keyboardType: TextInputType.number,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-            },
-            child: const Text('BATAL'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-                  backgroundColor: Color.fromARGB(255, 181, 220, 238),
-                ),
-            onPressed: () {
-              _updateItem(
-                item.id,
-                namaBarangController.text,
-                int.parse(stokController.text),
-                kodeController.text,
-                int.parse(hargaJualController.text),
-              );
-              Navigator.pop(context);
-            },
-            child: const Text('SIMPAN'),
-          ),
-        ],
-      );
-    },
-  );
-}
-
-  void _deleteItem(String itemId) {
-    _itemsCollection.doc(itemId).delete();
+        );
+      },
+    );
   }
 
-  void _updateItem(
-      String itemId, String nama, int stok, String kode, int hargaJual) {
+  void _updateItem(String itemId, String nama, int stok, String kode, int hargaJual, int hargaDasar) {
     _itemsCollection.doc(itemId).update({
       'nama': nama,
       'stok': stok,
       'kode': kode,
       'harga_jual': hargaJual,
+      'harga_dasar': hargaDasar,
     });
   }
 }
@@ -269,6 +242,7 @@ class Item {
   final int stok;
   final String kode;
   final int hargaJual;
+  final int hargaDasar;
 
   Item({
     required this.id,
@@ -276,6 +250,7 @@ class Item {
     required this.stok,
     required this.kode,
     required this.hargaJual,
+    required this.hargaDasar,
   });
 
   factory Item.fromDocument(DocumentSnapshot doc) {
@@ -285,6 +260,7 @@ class Item {
       stok: doc['stok'] ?? 0,
       kode: doc['kode'] ?? 'Unknown',
       hargaJual: doc['harga_jual'] ?? 0,
+      hargaDasar: doc['harga_dasar'] ?? 0, // Read harga_dasar from Firestore
     );
   }
 }

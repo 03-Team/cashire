@@ -1,9 +1,11 @@
 import 'package:Cashire/kasbon.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 class Kalkulatorkasbon extends StatelessWidget {
-  final int totalKasbon; // Tambahkan parameter ini
+  final int totalKasbon; 
+  // Tambahkan parameter ini
 
   Kalkulatorkasbon({required this.totalKasbon}); // Ubah konstruktor
 
@@ -12,15 +14,19 @@ class Kalkulatorkasbon extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       home: CalculatorPage(
-          totalKasbon: totalKasbon), // Kirim totalKasbon ke CalculatorPage
+        totalKasbon: totalKasbon,
+        kasbonId: 'W9C3kLkDLGTywkkWCJbu',
+      ), // Kirim totalKasbon ke CalculatorPage
     );
   }
 }
 
 class CalculatorPage extends StatefulWidget {
-  final int totalKasbon; // Tambahkan parameter ini
+  final int totalKasbon;
+  final String kasbonId; // Tambahkan parameter ini
 
-  CalculatorPage({required this.totalKasbon}); // Ubah konstruktor
+  CalculatorPage(
+      {required this.totalKasbon, required this.kasbonId}); // Ubah konstruktor
 
   @override
   _CalculatorPageState createState() => _CalculatorPageState();
@@ -29,6 +35,23 @@ class CalculatorPage extends StatefulWidget {
 class _CalculatorPageState extends State<CalculatorPage> {
   String displayValue = '0';
   int total = 0;
+
+  Future<void> markAsPaid() async {
+    try {
+      var kasbonCollection = FirebaseFirestore.instance.collection('kasbon');
+
+      // Menggunakan ID kasbon yang diteruskan ke CalculatorPage
+      await kasbonCollection.doc(widget.kasbonId).update({
+        'status': 'Lunas',
+        'keterangan': 'Lunas',
+      });
+
+      print(
+          "Kasbon dengan ID ${widget.kasbonId} telah ditandai sebagai lunas.");
+    } catch (e) {
+      print("Gagal memperbarui kasbon dengan ID ${widget.kasbonId}: $e");
+    }
+  }
 
   // Fungsi untuk menangani input tombol angka
   void onPressedNumber(int number) {
@@ -81,11 +104,15 @@ class _CalculatorPageState extends State<CalculatorPage> {
             }),
         actions: [
           IconButton(
-              icon: Icon(Icons.check_box),
-              onPressed: () {
-                Navigator.pushReplacement(
-                    context, MaterialPageRoute(builder: (c) => KasbonApps()));
-              }),
+            icon: Icon(Icons.check_box),
+            onPressed: () async {
+              await markAsPaid();
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (c) => KasbonApps()),
+              );
+            },
+          )
         ],
         centerTitle: true,
       ),

@@ -1,3 +1,4 @@
+import 'package:Cashire/barang.dart';
 import 'package:Cashire/calculator.dart';
 import 'package:flutter/material.dart';
 import 'package:Cashire/dashboard.dart';
@@ -20,6 +21,30 @@ class TransaksiApps extends StatefulWidget {
 class _TransaksiAppsState extends State<TransaksiApps> {
   String? selectedValue;
   List<Map<String, dynamic>> selectedItems = [];
+  final CollectionReference _itemsCollection =
+      FirebaseFirestore.instance.collection('barang');
+  final CollectionReference _categoriesCollection =
+      FirebaseFirestore.instance.collection('categories');
+
+  String _selectedCategory = 'semua';
+  List<String> _categories = ['semua'];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchCategories();
+  }
+
+  void _fetchCategories() async {
+    QuerySnapshot querySnapshot = await _categoriesCollection.get();
+    List<String> categories = ['semua'];
+    for (var doc in querySnapshot.docs) {
+      categories.add(doc['name']);
+    }
+    setState(() {
+      _categories = categories;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -71,18 +96,20 @@ class _TransaksiAppsState extends State<TransaksiApps> {
             child: Padding(
               padding: const EdgeInsets.only(left: 16.0),
               child: DropdownButton<String?>(
-                hint: Text("Semua Item"),
-                value: selectedValue,
-                onChanged: (value) {
+                value: _selectedCategory,
+                icon: Icon(Icons.arrow_drop_down),
+                onChanged: (String? newValue) {
                   setState(() {
-                    selectedValue = value;
+                    _selectedCategory = newValue!;
                   });
                 },
-                underline: SizedBox(),
-                items: ["Makanan", "Sembako", "Snack", "Bumbu Dapur"]
-                    .map<DropdownMenuItem<String>>(
-                        (e) => DropdownMenuItem(child: Text(e), value: e))
-                    .toList(),
+                items:
+                    _categories.map<DropdownMenuItem<String>>((String value) {
+                  return DropdownMenuItem<String>(
+                    value: value,
+                    child: Text(value),
+                  );
+                }).toList(),
               ),
             ),
           ),
@@ -93,23 +120,33 @@ class _TransaksiAppsState extends State<TransaksiApps> {
 
   Widget _buildItemList() {
     return Expanded(
-      child: StreamBuilder(
-        stream: FirebaseFirestore.instance.collection('barang').snapshots(),
+      child: StreamBuilder<QuerySnapshot>(
+        stream: _selectedCategory == 'semua'
+            ? _itemsCollection.snapshots()
+            : _itemsCollection
+                .where('kategori', isEqualTo: _selectedCategory)
+                .snapshots(),
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
+            return Center(child: CircularProgressIndicator());
           }
-          if (snapshot.data!.docs.isEmpty) {
-            return Center(child: Text("Tidak ada barang"));
+
+          var items =
+              snapshot.data!.docs.map((doc) => Item.fromDocument(doc)).toList();
+
+          if (items.isEmpty) {
+            return Center(
+                child: Text("Tidak Ada Barang Di dalam Kategori Ini"));
           }
+          
           return ListView(
             children: snapshot.data!.docs.map((doc) {
               var barang = doc.data() as Map<String, dynamic>;
               return Card(
                 child: ListTile(
                   onTap: () {
-                    addItem(barang['nama'], barang['harga_jual'],
-                        barang['kode']);
+                    addItem(
+                        barang['nama'], barang['harga_jual'], barang['kode']);
                   },
                   contentPadding: const EdgeInsets.all(16),
                   title: Row(
@@ -207,18 +244,19 @@ class _TransaksiAppsState extends State<TransaksiApps> {
 
   void saveTransaction() async {
     CollectionReference transactions =
-        FirebaseFirestore.instance.collection('transactions');
-
+        FirebaseFirestore.instance.collection('transactions'); // Koleksi barang
     for (var item in selectedItems) {
+      // Simpan transaksi ke Firestore
       await transactions.add({
         'nama': item['nama'],
         'kode': item['kode'],
         'harga_jual': item['harga_jual'],
         'jumlah_beli': item['jumlah_beli'],
         'total': (item['harga_jual'] ?? 0) * (item['jumlah_beli'] ?? 1),
-        'timestamp': FieldValue.serverTimestamp(),
+        'tanggal': FieldValue.serverTimestamp(),
       });
     }
+
     print("Transaction saved!");
   }
 }
@@ -261,7 +299,8 @@ class _TransaksiTotalState extends State<TransaksiTotal> {
                 context,
                 MaterialPageRoute(
                   builder: (c) => Kalkulator(
-                      totalAmount: widget.totalAmount, selectedItems: widget.selectedItems),
+                      totalAmount: widget.totalAmount,
+                      selectedItems: widget.selectedItems),
                 ),
               );
             },

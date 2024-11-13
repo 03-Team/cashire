@@ -1,5 +1,3 @@
-import 'package:Cashire/model/produk_model.dart';
-import 'package:Cashire/service/produk_service.dart';
 import 'package:flutter/material.dart';
 import 'package:Cashire/daftar_screen.dart';
 import 'package:Cashire/login_screen.dart';
@@ -29,16 +27,6 @@ class WelcomePage extends StatelessWidget {
                 width: 170,
               ),
             ),
-            TextButton(
-                onPressed: () {
-                  ProdukService().tambahProduk(Produk(
-                      id: "1",
-                      nama: "PhotoCard Xu Minghao Seventeen",
-                      deskripsi: "Terbaru Album Love, Money, Fame",
-                      harga: 350000,
-                      gambarUrl:"manage.png" ));
-                },
-                child: Text("Tambah Produk")),
             Padding(
               padding: const EdgeInsets.only(top: 50),
               child: Card(

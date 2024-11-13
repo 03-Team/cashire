@@ -33,7 +33,7 @@ class LaporanSuccess extends StatelessWidget {
             title: TextButton(
               onPressed: () {
                 Navigator.pushReplacement(
-                    context, MaterialPageRoute(builder: (c) => laphari()));
+                    context, MaterialPageRoute(builder: (c) => LapHari()));
               },
               child: Padding(
                 padding: const EdgeInsets.only(right: 85),
@@ -48,7 +48,7 @@ class LaporanSuccess extends StatelessWidget {
             title: TextButton(
               onPressed: () {
                 Navigator.pushReplacement(
-                    context, MaterialPageRoute(builder: (c) => lapbulan()));
+                    context, MaterialPageRoute(builder: (c) => LapBulan(11, 2024)));
               },
               child: Padding(
                 padding: const EdgeInsets.only(right: 75),
@@ -63,12 +63,18 @@ class LaporanSuccess extends StatelessWidget {
             title: TextButton(
               onPressed: () {
                 Navigator.pushReplacement(
-                    context, MaterialPageRoute(builder: (c) => laptahun()));
+                  context,
+                  MaterialPageRoute(
+                    builder: (c) => LapTahun(),
+                  ),
+                );
               },
               child: Padding(
                 padding: const EdgeInsets.only(right: 70),
-                child: Text("Laporan Transaksi Tahun Ini",
-                    style: TextStyle(color: Colors.black, fontSize: 17)),
+                child: Text(
+                  "Laporan Transaksi Tahun Ini",
+                  style: TextStyle(color: Colors.black, fontSize: 17),
+                ),
               ),
             ),
           ),

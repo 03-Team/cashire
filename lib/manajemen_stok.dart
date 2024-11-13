@@ -76,7 +76,7 @@ class _StockPageState extends State<StockPage> {
             child: StreamBuilder<QuerySnapshot>(
               stream: _selectedCategory == 'semua'
                   ? _itemsCollection.snapshots()
-                  : _itemsCollection.where('categories', isEqualTo: _selectedCategory).snapshots(),
+                  : _itemsCollection.where('kategori', isEqualTo: _selectedCategory).snapshots(),
               builder: (context, snapshot) {
                 if (!snapshot.hasData) {
                   return Center(child: CircularProgressIndicator());

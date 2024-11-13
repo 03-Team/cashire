@@ -1,33 +1,84 @@
-import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
-import 'package:open_file/open_file.dart';
+import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
+import 'dart:io';
 
 class HomeControllerBulan extends GetxController {
-  // Data dummy untuk contoh
-  final List<Map<String, String>> transaksis = [
-    {
-      "No Transaksi": "000001",
-      "Tanggal": "10-09-2024",
-      "Total": "60000",
-      "HPP": "50000",
-      "Keuntungan": "10000"
-    },
-    {
-      "No Transaksi": "000002",
-      "Tanggal": "24-09-2024",
-      "Total": "75000",
-      "HPP": "50000",
-      "Keuntungan": "25000"
-    },
-    // Tambahkan data lain jika perlu
-  ];
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  final String totalSum = "135000";
-  final String hppSum = "100000";
-  final String keuntunganSum = "35000";
+  final List<Map<String, String>> transaksis = [];
+  final RxDouble totalSum = 0.0.obs;
+  final RxDouble hppSum = 0.0.obs;
+  final RxDouble keuntunganSum = 0.0.obs;
+  final RxBool isLoading = true.obs;
+
+  final int selectedMonth;
+  final int selectedYear;
+
+  HomeControllerBulan(this.selectedMonth, this.selectedYear);
+
+  @override
+  void onInit() {
+    super.onInit();
+    fetchTransactions();
+  }
+
+  Future<void> fetchTransactions() async {
+    try {
+      // Adjust query to filter by month and year
+      QuerySnapshot snapshot = await _firestore
+          .collection('transactions')
+          .get();
+
+      double total = 0;
+      double hpp = 0;
+      double keuntungan = 0;
+
+      List<Future<void>> futures = [];
+
+      for (var doc in snapshot.docs) {
+        futures.add(() async {
+          Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+          double hargaJual = data['harga_jual'] ?? 0;
+          int jumlahBeli = data['jumlah_beli'] ?? 0;
+
+          Timestamp timestamp = data['tanggal'];
+          DateTime date = timestamp.toDate();
+          String formattedDate = DateFormat('dd-MM-yyyy').format(date);
+
+          double subtotal = hargaJual * jumlahBeli;
+          double hppSubtotal = (hargaJual / 2);
+          double profit = subtotal - hppSubtotal;
+
+          total += subtotal;
+          hpp += hppSubtotal;
+          keuntungan += profit;
+
+          transaksis.add({
+            "No Transaksi": data['id'] ?? '',
+            "Tanggal": formattedDate,
+            "Total": subtotal.toStringAsFixed(0),
+            "HPP": hppSubtotal.toStringAsFixed(0),
+            "Keuntungan": profit.toStringAsFixed(0),
+          });
+        }());
+      }
+
+      await Future.wait(futures);
+
+      totalSum.value = total;
+      hppSum.value = hpp;
+      keuntunganSum.value = keuntungan;
+    } catch (e) {
+      print("Error fetching transactions: $e");
+    } finally {
+      isLoading.value = false;
+    }
+  }
 
   void getPDFbulan() async {
     final pdf = pw.Document();
@@ -49,7 +100,7 @@ class HomeControllerBulan extends GetxController {
               pw.SizedBox(height: 8),
               pw.Text("Nama Laporan  : Laporan Transaksi"),
               pw.SizedBox(height: 8),
-              pw.Text("Periode              : Bulan ini"),
+              pw.Text("Periode              : Bulan ${selectedMonth}, Tahun ${selectedYear}"),
               pw.SizedBox(height: 10),
 
               // Tabel data transaksi
@@ -84,11 +135,11 @@ class HomeControllerBulan extends GetxController {
                 children: [
                   pw.Text("Total : ",
                       style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                  pw.Text(totalSum),
+                  pw.Text(totalSum.value.toStringAsFixed(0)),
                   pw.SizedBox(width: 20),
-                  pw.Text(hppSum),
+                  pw.Text(hppSum.value.toStringAsFixed(0)),
                   pw.SizedBox(width: 20),
-                  pw.Text(keuntunganSum),
+                  pw.Text(keuntunganSum.value.toStringAsFixed(0)),
                 ],
               ),
             ],
@@ -102,12 +153,15 @@ class HomeControllerBulan extends GetxController {
 
     // Buat file kosong di direktori
     final dir = await getApplicationDocumentsDirectory();
-    final file = File('${dir.path}/mydownload.pdf');
+    final file = File('${dir.path}/laporan_bulanan.pdf');
 
     // Timpa file kosong dengan file pdf
     await file.writeAsBytes(bytes);
 
-    // Open pdf
-    await OpenFile.open(file.path);
+    // Buka PDF
+    final result = await OpenFile.open(file.path);
+    if (result.type != ResultType.done) {
+      print("Error opening PDF: ${result.message}");
+    }
   }
 }

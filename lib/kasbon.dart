@@ -181,6 +181,9 @@ class _KasbonAppsState extends State<KasbonApps> {
                           ? DateFormat('dd-MM-yyyy')
                               .format(kasbon['tanggal_jatuh_tempo'].toDate())
                           : 'Tanggal tidak tersedia';
+                      String statusKasbon = kasbon['keterangan'] == 'Lunas'
+                          ? 'Lunas'
+                          : 'Belum Lunas';
 
                       return GestureDetector(
                         onTap: () async {
@@ -290,7 +293,11 @@ class _KasbonAppsState extends State<KasbonApps> {
                                   children: [
                                     Text(
                                         "${formatCurrency(kasbon['nominal'])}"),
-                                    Text("${kasbon['keterangan']}"),
+                                    Text("$statusKasbon",
+                                        style: TextStyle(
+                                            color: statusKasbon == 'Lunas'
+                                                ? Colors.green
+                                                : Colors.red)),
                                   ],
                                 ),
                               ],
@@ -583,6 +590,8 @@ class _EditKasbonPageState extends State<EditKasbonPage> {
               TextFormField(
                 controller: keteranganController,
                 decoration: InputDecoration(labelText: 'Keterangan'),
+                readOnly: true, // Menambahkan properti readOnly
+                enabled: false,
               ),
               SizedBox(height: 10),
               Padding(
